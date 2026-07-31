@@ -1,0 +1,6 @@
+{
+  "lstm_mc_prob_positive_return": 0.7644,
+  "lstm_mc_prob_beat_buyhold": 0.1336,
+  "lstm_permutation_percentile_sharpe": 0.8605,
+  "lstm_permutation_actual_sharpe": 1.0949342150309536
+}

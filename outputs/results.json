@@ -1,0 +1,177 @@
+{
+  "ticker": "AAPL",
+  "data_source": "local CSV fallback (aapl_plotly.csv)",
+  "data_range": [
+    "2015-02-17",
+    "2017-02-16"
+  ],
+  "n_rows_raw": 506,
+  "n_rows_after_features": 456,
+  "n_features": 26,
+  "feature_list": [
+    "sma_5_ratio",
+    "sma_10_ratio",
+    "sma_20_ratio",
+    "sma_50_ratio",
+    "sma_crossover",
+    "return_lag_1",
+    "return_lag_2",
+    "return_lag_3",
+    "return_lag_5",
+    "return_lag_10",
+    "rsi",
+    "vol_5",
+    "vol_10",
+    "vol_20",
+    "macd_line",
+    "macd_signal",
+    "macd_hist",
+    "bb_percent_b",
+    "bb_bandwidth",
+    "momentum_5",
+    "momentum_10",
+    "momentum_20",
+    "volume_ratio",
+    "volume_change",
+    "dow_sin",
+    "dow_cos"
+  ],
+  "train_period": [
+    "2015-04-28",
+    "2016-08-01"
+  ],
+  "test_period": [
+    "2016-08-02",
+    "2017-02-15"
+  ],
+  "n_train": 319,
+  "n_test": 137,
+  "rf_best_params": {
+    "n_estimators": 300,
+    "max_depth": 3,
+    "min_samples_leaf": 40,
+    "max_features": "sqrt"
+  },
+  "rf_metrics": {
+    "n": 137,
+    "mse": 0.00013163009883319216,
+    "rmse": 0.01147301611753388,
+    "mae": 0.0076925476055674,
+    "r2_oos_zero_benchmark": -0.025634893357939337,
+    "r2_standard": -0.06075717243706058,
+    "hit_rate": 0.4744525547445255
+  },
+  "lstm_metrics": {
+    "n": 137,
+    "mse": 0.00013478545727766433,
+    "rmse": 0.01160971391885538,
+    "mae": 0.008444352617171205,
+    "r2_oos_zero_benchmark": -0.05022081888823937,
+    "r2_standard": -0.08618502938072625,
+    "hit_rate": 0.5182481751824818
+  },
+  "backtest_rf": {
+    "strategy": {
+      "n_days": 137.0,
+      "total_return": -0.20918651905135077,
+      "annualized_return": -0.35059474782959354,
+      "annualized_vol": 0.17928390742175476,
+      "sharpe": -2.315957830763969,
+      "sortino": -2.7275315989460522,
+      "max_drawdown": -0.24115948884400995,
+      "calmar": -1.4537879040553532,
+      "win_rate": 0.45255474452554745
+    },
+    "buy_and_hold": {
+      "n_days": 137.0,
+      "total_return": 0.3141950138558307,
+      "annualized_return": 0.6529692305640655,
+      "annualized_vol": 0.17743121411108173,
+      "sharpe": 2.922573905385426,
+      "sortino": 4.622301366835379,
+      "max_drawdown": -0.10145676917909852,
+      "calmar": 6.435935579728534,
+      "win_rate": 0.5547445255474452
+    }
+  },
+  "backtest_lstm": {
+    "strategy": {
+      "n_days": 137.0,
+      "total_return": 0.10290778410485224,
+      "annualized_return": 0.19742215989079637,
+      "annualized_vol": 0.179023595397843,
+      "sharpe": 1.0949342150309536,
+      "sortino": 1.7435663633087668,
+      "max_drawdown": -0.09565383217601087,
+      "calmar": 2.0639231633451285,
+      "win_rate": 0.5036496350364964
+    },
+    "buy_and_hold": {
+      "n_days": 137.0,
+      "total_return": 0.3141950138558307,
+      "annualized_return": 0.6529692305640655,
+      "annualized_vol": 0.17743121411108173,
+      "sharpe": 2.922573905385426,
+      "sortino": 4.622301366835379,
+      "max_drawdown": -0.10145676917909852,
+      "calmar": 6.435935579728534,
+      "win_rate": 0.5547445255474452
+    }
+  },
+  "monte_carlo_percentiles": {
+    "p5": {
+      "strategy_total_return": -0.3025197701171147,
+      "buy_hold_total_return": 0.03356473501003831,
+      "excess_total_return": -0.9375071520461199,
+      "strategy_sharpe": -3.633923352246161,
+      "buy_hold_sharpe": 0.43624597893666184,
+      "strategy_max_dd": -0.3129158268276279,
+      "buy_hold_max_dd": -0.1544961606898863
+    },
+    "p25": {
+      "strategy_total_return": -0.2496828591732521,
+      "buy_hold_total_return": 0.19458934776019843,
+      "excess_total_return": -0.6868075696457354,
+      "strategy_sharpe": -2.8980678571417133,
+      "buy_hold_sharpe": 1.9979376443181016,
+      "strategy_max_dd": -0.2652822062555631,
+      "buy_hold_max_dd": -0.10369865588939475
+    },
+    "p50": {
+      "strategy_total_return": -0.2089179804761631,
+      "buy_hold_total_return": 0.3165686324962682,
+      "excess_total_return": -0.5197376090225228,
+      "strategy_sharpe": -2.361346765102561,
+      "buy_hold_sharpe": 3.026722272580524,
+      "strategy_max_dd": -0.22982831991177316,
+      "buy_hold_max_dd": -0.0779441414717128
+    },
+    "p75": {
+      "strategy_total_return": -0.16506609077549916,
+      "buy_hold_total_return": 0.44864149149574123,
+      "excess_total_return": -0.3689647202548297,
+      "strategy_sharpe": -1.8192536459241169,
+      "buy_hold_sharpe": 4.007992144443743,
+      "strategy_max_dd": -0.1925628431236758,
+      "buy_hold_max_dd": -0.05803259185392015
+    },
+    "p95": {
+      "strategy_total_return": -0.09672569999331514,
+      "buy_hold_total_return": 0.6549516043917804,
+      "excess_total_return": -0.1653256474601971,
+      "strategy_sharpe": -1.0191640275483218,
+      "buy_hold_sharpe": 5.347912110883422,
+      "strategy_max_dd": -0.13888905590364328,
+      "buy_hold_max_dd": -0.043960692857023025
+    }
+  },
+  "monte_carlo_prob_positive_return": 0.0022,
+  "monte_carlo_prob_beat_buyhold": 0.0074,
+  "permutation_actual_sharpe": -2.315957830763969,
+  "permutation_actual_total_return": -0.20918651905135077,
+  "permutation_percentile_sharpe": 0.4925,
+  "transaction_cost_bps": 5.0,
+  "n_bootstrap_sims": 5000,
+  "n_permutation_sims": 2000,
+  "block_size": 15
+}
