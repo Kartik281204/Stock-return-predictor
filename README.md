@@ -1,108 +1,22 @@
-<div align="center">
+# Stock Return Predictor
 
-# 📈 Stock Return Predictor
+An end-to-end pipeline that pulls historical price data, engineers technical
+features, trains a Random Forest **and** an LSTM to predict next-day
+returns, backtests a long/short strategy against buy-and-hold, and —
+instead of trusting the one equity curve that happened to occur — evaluates
+the result with Monte Carlo resampling.
 
-**Random Forest & LSTM models for next-day stock return prediction — backtested as a long/short strategy, then stress-tested with Monte Carlo resampling instead of trusting one lucky-looking equity curve.**
-
-[![Python](https://img.shields.io/badge/python-3.10+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![scikit--learn](https://img.shields.io/badge/scikit--learn-F7931E?logo=scikitlearn&logoColor=white)](https://scikit-learn.org/)
-[![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
-[![Not Financial Advice](https://img.shields.io/badge/not-financial%20advice-critical)](#disclaimer)
-
-</div>
-
-<br>
-
-<table>
-<tr>
-<td width="50%"><img src="figures/04_equity_curve.png" alt="Single realized equity curve"></td>
-<td width="50%"><img src="figures/05_monte_carlo_fan.png" alt="5,000 block-bootstrapped equity curves"></td>
-</tr>
-<tr>
-<td align="center"><sub>What most backtest repos show you: <b>one</b> equity curve.</sub></td>
-<td align="center"><sub>What this repo shows you: the <b>5,000-simulation</b> distribution behind it.</sub></td>
-</tr>
-</table>
-
-## Most ML-trading repos show you one backtest. This one shows you 5,000.
-
-Search GitHub for "stock prediction LSTM" and the pattern repeats: pull some
-prices, engineer a few features, train a model, plot one gorgeous equity
-curve, ship it. That curve is a single draw from a distribution of things
-that could have happened, and it's usually the only draw anyone shows you.
-
-This repo predicts next-day returns the same way those do — but before any
-result is allowed to count as a finding, it's run through a 5,000-simulation
-block bootstrap and a 2,000-run permutation test against pure noise. When
-the honest answer is *"this doesn't actually beat buy-and-hold,"* that's
-what gets reported, with the statistics to back it up — not a cherry-picked
-window that hides it.
-
-<br>
-
-<table align="center">
-<tr><th></th><th align="center">R² (test)</th><th align="center">Backtest return</th><th align="center">P(beats buy&nbsp;&amp;&nbsp;hold)*</th></tr>
-<tr><td>Buy &amp; hold</td><td align="center">—</td><td align="center"><b>+31.4%</b></td><td align="center">—</td></tr>
-<tr><td>Random Forest long/short</td><td align="center">−2.6%</td><td align="center">−20.9%</td><td align="center">0.7%</td></tr>
-<tr><td>LSTM long/short</td><td align="center">−5.0%</td><td align="center">+10.3%</td><td align="center">13.4%</td></tr>
-</table>
-<p align="center"><sub>* From 5,000-simulation block bootstrap, not the single realized path. Full numbers in <a href="docs/RESULTS.md">docs/RESULTS.md</a>.</sub></p>
+**Headline finding, stated up front:** on this dataset, neither model
+produces a long/short strategy that reliably beats buy-and-hold once you
+look past the single realized path. That's not a bug in the pipeline — it's
+the expected result, and the report below explains why, using the same
+lens the four resources you linked all push toward (Gu-Kelly-Xiu, López de
+Prado, the ML-for-Trading repo, and QuantStart). See [Results](#results) and
+[What this actually shows](#what-this-actually-shows).
 
 ---
 
 ## Contents
-
-- [How it works](#how-it-works)
-- [Quickstart](#quickstart)
-- [What's inside](#whats-inside)
-- [Key design choices](#key-design-choices)
-- [Results](#results)
-- [Limitations](#limitations)
-- [Roadmap](#roadmap)
-- [References](#references)
-- [Disclaimer](#disclaimer)
-- [Contributing](#contributing) · [License](#license)
-
-## How it works
-
-```mermaid
-flowchart LR
-    A["Price Data<br/>OHLCV"] --> B["Feature Engineering<br/>26 features"]
-    B --> C{"Chronological Split<br/>70/30, no shuffle"}
-    C -->|train| D1["Random Forest<br/>walk-forward CV"]
-    C -->|train| D2["LSTM<br/>regularized"]
-    D1 --> E["Long/Short Backtest<br/>vs buy and hold"]
-    D2 --> E
-    E --> F["Block Bootstrap<br/>5,000 sims"]
-    E --> G["Permutation Test<br/>2,000 sims"]
-    F --> H(("Honest<br/>Verdict"))
-    G --> H
-```
-
-## Quickstart
-
-```bash
-git clone https://github.com/<your-username>/stock-return-predictor.git
-cd stock-return-predictor
-pip install -r requirements.txt
-python3 main.py
-```
-
-Runs end to end in a couple of minutes on CPU: pulls data, engineers
-features, trains both models, backtests, runs the Monte Carlo evaluation,
-and writes every chart to `figures/` and every metric to
-`outputs/results.json`.
-
-Point it at a different ticker or a longer history in `src/config.py`:
-
-```python
-TICKER = "MSFT"
-START_DATE = "2010-01-01"
-DATA_SOURCE = "yfinance"   # 'auto' | 'yfinance' | 'local_csv'
-```
-
-## What's inside
 
 ```
 stock_return_predictor/
@@ -110,104 +24,297 @@ stock_return_predictor/
 ├── requirements.txt
 ├── src/
 │   ├── config.py               # every tunable parameter lives here
-│   ├── data_loader.py          # yfinance, with automatic local-CSV fallback
+│   ├── data_loader.py          # yfinance with automatic local-CSV fallback
 │   ├── features.py             # SMA, lagged returns, RSI, rolling vol, +extras
 │   ├── model.py                # Random Forest + LSTM, walk-forward CV
 │   ├── backtest.py             # long/short engine, transaction costs
 │   ├── monte_carlo.py          # block bootstrap + permutation test
 │   └── plotting.py
-├── data/                       # bundled real fallback dataset
-├── figures/                    # all charts, regenerated on every run
-├── outputs/                    # results.json + raw backtest / MC series (CSV)
-└── docs/
-    └── RESULTS.md              # full methodology + results write-up
+├── data/aapl_plotly.csv        # bundled real fallback dataset (see below)
+├── figures/                    # all charts from the last run
+└── outputs/
+    ├── results.json            # every metric from the last run, machine-readable
+    ├── backtest_rf_daily.csv   # full daily backtest series
+    └── monte_carlo_simulations.csv
 ```
 
-## Key design choices
+## Quickstart
 
-- **No shuffling, anywhere.** Not the train/test split, not cross-validation
-  (`sklearn.TimeSeriesSplit`, expanding-window), not the LSTM's mini-batches.
-- **Hyperparameters are chosen by validation performance, never test
-  performance.** The test set is touched exactly once, after every model is
-  frozen. (The LSTM's regularization — dropout, weight decay, gradient
-  clipping — was tuned this way; an earlier, unregularized version scored
-  test R² ≈ −8.7 by memorizing training noise. Worth knowing what that looks
-  like before you ship a model that's done it.)
-- **R² is benchmarked against zero, not the historical mean** (Gu, Kelly &
-  Xiu, 2020) — demeaning the target would leak look-ahead information a live
-  trader wouldn't have.
-- **Transaction costs are real.** 5 bps per unit of position change, charged
-  on every trade, in both the single-path backtest and every Monte Carlo
-  simulation.
-- **The block bootstrap preserves autocorrelation.** Returns are resampled
-  in contiguous 15-day blocks, not shuffled independently, so volatility
-  clustering survives the resample.
-- **The permutation test isolates *timing* skill from *call-quality*.**
-  Reshuffling a model's own realized long/short calls into random order
-  answers a different question than the bootstrap does — see
-  [`docs/RESULTS.md`](docs/RESULTS.md) for why that distinction mattered
-  here.
+```bash
+pip install -r requirements.txt
+python3 main.py
+```
+
+That's it — it downloads (or falls back to local) data, engineers features,
+trains both models, backtests, runs the Monte Carlo evaluation, and writes
+every chart to `figures/` and every number to `outputs/results.json`.
+
+To point it at a different ticker or a longer history, edit `src/config.py`:
+```python
+TICKER = "MSFT"
+START_DATE = "2010-01-01"
+DATA_SOURCE = "yfinance"   # 'auto' | 'yfinance' | 'local_csv'
+```
+
+---
+
+## Data
+
+**A constraint worth being upfront about:** this was built inside a sandboxed
+tool environment whose network access is limited to package registries
+(PyPI, npm, GitHub) — it cannot reach Yahoo Finance, Stooq, or any live
+market-data API (both returned HTTP 403 when tested). `data_loader.py` is
+written to use **yfinance as the primary source** and will work normally the
+moment you run it somewhere with normal internet access. Inside this
+sandbox, it transparently falls back to a bundled CSV of **real** AAPL daily
+OHLCV data (Feb 2015 – Feb 2017, 506 trading days) pulled from a public
+GitHub dataset. Every result below is computed on that real data — nothing
+in this report is synthetic or simulated.
+
+The short 2-year window is itself a relevant limitation, not just a sandbox
+inconvenience — see [Limitations](#limitations--how-this-could-fail-live).
+
+## Feature engineering (`src/features.py`)
+
+All features are computed strictly from information available at or before
+the close of day *t*; the target is the return from day *t* to *t+1*,
+shifted forward so it can never leak into the inputs. 26 features:
+
+| Group | Features |
+|---|---|
+| Moving averages | `close/SMA - 1` for 5/10/20/50-day windows, plus a fast-minus-slow crossover |
+| Lagged returns | 1, 2, 3, 5, 10-day lagged daily returns |
+| RSI | Wilder's 14-day RSI |
+| Rolling volatility | Annualized realized vol over 5/10/20-day windows |
+| MACD | Line, signal, histogram (12/26/9), normalized by price |
+| Bollinger Bands | %B and bandwidth (20-day, 2σ) |
+| Momentum | 5/10/20-day cumulative return |
+| Volume | Volume ratio to its 20-day average, volume % change |
+| Calendar | Sine/cosine encoding of day-of-week |
+
+## Models (`src/model.py`)
+
+**Random Forest** (primary model): hyperparameters (`max_depth`,
+`min_samples_leaf`, `max_features`) are chosen by grid search over
+`sklearn.TimeSeriesSplit` (5 expanding-window folds), entirely inside the
+training block. The test set is touched exactly once, after the model is
+frozen — this mirrors the "evidence boundary" discipline the ML-for-Trading
+repo argues for: hyperparameter search is exploration, the final test-set
+score is confirmation, and mixing the two is how backtests quietly become
+overfit.
+
+Selected via CV: `max_depth=3, min_samples_leaf=40, max_features='sqrt'`
+— note how shallow and regularized this is. That's not an accident; deeper,
+less-regularized trees consistently scored worse in cross-validation, which
+is itself informative (see below).
+
+**LSTM** (secondary comparison model): 1 layer, 8 hidden units, 20-day
+lookback window, dropout 0.2, L2 weight decay 1e-2, gradient clipping,
+chronological early stopping on an internal validation split. First
+attempt used a larger, unregularized network and it was unusable (test
+R² ≈ −8.7 — it had memorized training noise). The hyperparameters shipped
+here were chosen by internal **validation** loss, not by peeking at test
+performance — picking based on test performance would be exactly the kind
+of leakage this whole project is trying to avoid.
+
+Both models share one chronological split — **no shuffling anywhere**, not
+in the train/test split, not in cross-validation, not in the LSTM's mini-batches:
+
+| | Period | Rows |
+|---|---|---|
+| Train | 2015-04-28 → 2016-08-01 | 319 |
+| Test | 2016-08-02 → 2017-02-15 | 137 |
+
+## Backtest mechanics (`src/backtest.py`)
+
+Each day, using only information available through that day's close, the
+model predicts tomorrow's return. Position rule: **long** if predicted
+return > 0, **short** if < 0 (configurable deadband). Position is held for
+one day and transaction costs (5 bps per unit of position change — so
+flipping long→short costs 2×) are charged on every change. Buy-and-hold is
+the same test-period dates, always long, one entry cost.
+
+---
 
 ## Results
 
-The condensed version is in the table up top. The full write-up —
-exact feature and backtest mechanics, every Monte Carlo number, feature
-importance, and how the results connect to the empirical asset-pricing and
-financial-ML literature this project draws on — is in
-**[`docs/RESULTS.md`](docs/RESULTS.md)**.
+### Out-of-sample prediction accuracy
 
-The one-sentence version: on the real (not synthetic) two-year AAPL sample
-shipped in this repo, neither model shows real predictive skill, and the
-Monte Carlo layer confirms this isn't just an unlucky single path — it's
-worth reading *why*, because the reasons are the same handful of pitfalls
-that sink most "AI stock predictor" projects once they leave the backtest.
+| | RMSE | R² (0-benchmark)¹ | Hit rate |
+|---|---|---|---|
+| Random Forest | 1.147% | −2.56% | 47.4% |
+| LSTM | 1.161% | −5.02% | 51.8% |
 
-## Limitations
+¹ Following Gu, Kelly & Xiu (2020), R² here is benchmarked against a **zero**
+forecast, not the historical mean — demeaning the target would inject
+look-ahead information a live trader wouldn't have. Both models score at or
+below zero: on this stock, in this window, from these features alone,
+neither model explains any of the variance in next-day returns. That's a
+real result, not a bug — see the interpretation section below.
 
-Short version — sample size (456 rows, one 137-day test window), single
-asset, single market regime, naive fixed-horizon labeling, no
-purged/embargoed cross-validation, flat transaction-cost assumption, and a
-technical-indicators-only feature set. Every one of these is a lever you can
-pull; see [`docs/RESULTS.md`](docs/RESULTS.md#limitations--how-this-could-fail-live)
-for the full discussion and what each would take to fix.
+![Predicted vs actual returns](figures/03_predictions_vs_actual.png)
 
-## Roadmap
+### Backtest: long/short strategy vs. buy-and-hold (single realized path)
 
-- [ ] Multi-year, multi-regime data via `yfinance` (one-line config change)
-- [ ] Cross-sectional pooling across a ticker universe, not one stock at a time
-- [ ] Purged & embargoed cross-validation
-- [ ] Meta-labeling / confidence-weighted position sizing
-- [ ] Sensitivity analysis across block-bootstrap window lengths
+| | Total return | Ann. Sharpe | Max drawdown | Trades | Win rate |
+|---|---|---|---|---|---|
+| **Buy & hold** | **+31.4%** | **2.92** | −10.1% | 1 | 55.5% |
+| RF long/short | −20.9% | −2.32 | −24.1% | 45 | 45.3% |
+| LSTM long/short | +10.3% | 1.09 | −9.6% | 34 | 50.4% |
+
+![Equity curve](figures/04_equity_curve.png)
+
+On this one realized path, both strategies lag buy-and-hold; RF loses money
+outright. It would be tempting to stop here and conclude "LSTM > RF, both
+lose to the index" — but that's exactly the single-equity-curve trap the
+brief asked to avoid. One 137-day path is one draw from a distribution.
+
+### Monte Carlo evaluation — the part a single equity curve can't tell you
+
+**Block bootstrap** (5,000 simulations, 15-day contiguous blocks to preserve
+volatility clustering, same resampled indices applied to both series so
+excess return is a fair paired comparison):
+
+| | P(total return > 0) | P(beats buy & hold) |
+|---|---|---|
+| RF strategy | 0.2% | 0.7% |
+| LSTM strategy | 76.4% | 13.4% |
+
+![Monte Carlo fan chart](figures/05_monte_carlo_fan.png)
+![Monte Carlo distributions](figures/06_monte_carlo_distribution.png)
+
+The RF result is now much stronger evidence than the single path suggested:
+it isn't that RF got unlucky once — across 5,000 resampled market
+histories drawn from this same test period, it beats buy-and-hold in only
+0.7% of them. LSTM looks more interesting: it's typically profitable in
+absolute terms (76.4% of resamples), it just usually isn't profitable
+*enough* to beat a strong buy-and-hold period (13.4%).
+
+**Permutation test** (2,000 reshuffles of each model's own realized calls,
+same long/short/flat decisions, random order — this asks whether the
+*timing* of the calls carries information, independent of how good the
+calls are on average):
+
+| | Actual Sharpe | Percentile vs. random reshuffles |
+|---|---|---|
+| RF strategy | −2.32 | 49.2% |
+| LSTM strategy | 1.09 | 86.1% |
+
+![Permutation test](figures/07_permutation_test.png)
+
+RF's 49.2nd percentile means its specific sequencing of calls is
+indistinguishable from randomly reordering the same calls — the problem
+isn't *when* it was wrong, it's that it was wrong more than right, in
+aggregate. LSTM's 86.1st percentile is more suggestive of real timing
+information — but with only 137 test days, that's a single non-overlapping
+sample. Treat it as "worth investigating with more data," not as evidence
+you'd trade on.
+
+### Feature importance (Random Forest)
+
+![Feature importance](figures/02_feature_importance.png)
+
+Short-horizon volatility and lagged returns dominate; this is consistent
+with the broader empirical-asset-pricing-via-ML literature, where the
+signal that exists tends to concentrate in a handful of momentum/volatility
+predictors rather than being spread evenly across many engineered features.
+
+---
+
+## What this actually shows
+
+This result set — near-zero R², a strategy that mostly fails to beat a
+strong buy-and-hold period, feature importance concentrated in a few
+predictors — lines up with all four resources you linked, which is worth
+spelling out rather than glossing over:
+
+- **Gu, Kelly & Xiu (2020)** benchmark trees, neural nets, and linear
+  models on the *cross-section* of thousands of stocks over decades and
+  still only find modest out-of-sample R² — a few tenths of a percent at
+  the monthly frequency, even with far more data and far more predictors
+  than a single stock's daily technical indicators can offer. A negative R²
+  on one stock over 137 daily observations, using price-derived features
+  only, is entirely consistent with their broader finding that most of the
+  achievable "edge" in return prediction is small and hard-won.
+- **López de Prado**'s broader body of work (the SSRN paper is drawn from
+  *Advances in Financial Machine Learning*) is largely about exactly the
+  gap between this kind of backtest and a strategy that survives contact
+  with live markets: tiny effective sample sizes relative to the noise in
+  financial data, naive fixed-horizon labeling instead of path-aware
+  labeling, cross-validation that leaks through serial correlation,
+  backtests treated as confirmation when they're really exploratory
+  research, and costs/capacity/regime-shift assumptions that don't survive
+  live trading. This project's 137-day single-stock test set and simple
+  sign-based long/short rule are a compact illustration of several of these
+  at once.
+- **QuantStart**'s forecasting series makes the same point this project's
+  permutation test makes more formally: a purely random forecaster can
+  still post a hit rate that looks like it beats a coin flip, and that
+  alone doesn't mean a model has skill. RF's 49.2nd-percentile permutation
+  result is a direct, quantified version of that warning.
+- **Stefan Jansen's ML-for-Trading repo** emphasizes walk-forward
+  validation, an explicit train/validate/test "evidence boundary," and
+  cost-aware backtesting as necessary infrastructure *before* a result can
+  be trusted — infrastructure this project implements (expanding-window CV,
+  frozen test set, transaction costs, block-bootstrap and permutation
+  Monte Carlo) specifically so that a negative result like this one is
+  trustworthy rather than an artifact of leakage.
+
+The honest takeaway is not "machine learning doesn't work for trading." It's
+that a single stock, a few hundred daily rows, and price-derived technical
+features alone are a genuinely hard setting to extract signal from — and a
+pipeline that can't tell you that (because it never checks against a null
+distribution or a resampled outcome space) is exactly the kind that looks
+great in a backtest and fails live.
+
+## Limitations & how this could fail live
+
+- **Sample size.** 456 usable rows, 137 test days, one non-overlapping test
+  window. Every Monte Carlo number above describes *this* window; a
+  different 6-month period would give different — possibly very different
+  — numbers. Re-running with 10+ years of data (trivial via `yfinance`
+  outside this sandbox) is the single highest-value next step.
+- **Single asset, single regime.** Aug 2016–Feb 2017 was a strong,
+  low-volatility uptrend for AAPL — a tough benchmark for any long/short
+  strategy to beat, and not representative of all market regimes.
+- **Naive labeling.** The target is a fixed one-day-ahead return. No
+  stop-loss/profit-taking-aware labeling (e.g. triple-barrier), no
+  meta-labeling of a primary signal, no sizing beyond a flat ±1.
+- **No purging/embargo in cross-validation.** `TimeSeriesSplit` prevents
+  shuffling, but adjacent folds still sit right next to each other; rolling
+  features create short-range serial correlation across the fold boundary
+  that a purge/embargo gap would remove.
+- **Transaction costs are a flat assumption** (5 bps/unit), not a market-impact
+  or capacity model; real slippage varies with size and liquidity.
+- **Technical-indicators-only feature set.** No fundamentals, no
+  cross-sectional signals from other stocks, no macro predictors — all of
+  which the Gu-Kelly-Xiu-style literature finds add meaningfully to
+  predictive power.
+
+## Extending this
+
+- Swap in `DATA_SOURCE = "yfinance"` and a longer `START_DATE` for a real
+  multi-year, multi-regime test.
+- Loop the pipeline over a universe of tickers and pool predictions
+  cross-sectionally (closer to how Gu-Kelly-Xiu and most real quant
+  equity strategies actually operate — a single-stock time-series bet is
+  the hardest version of this problem, not the standard one).
+- Add purged, embargoed cross-validation (`mlfinlab`-style) instead of plain
+  `TimeSeriesSplit`.
+- Replace the sign-based position rule with confidence-weighted sizing, and
+  add meta-labeling on top of the primary signal.
+- Run `src/monte_carlo.py`'s `block_bootstrap` across multiple `block_size`
+  values as a sensitivity check — results shouldn't swing wildly with a
+  reasonable range of block lengths.
 
 ## References
 
-This project was built around four resources — the pipeline's design
-choices trace directly back to points each one makes:
-
 - Gu, S., Kelly, B., & Xiu, D. (2020). *Empirical Asset Pricing via Machine
   Learning*. Review of Financial Studies, 33(5), 2223–2273.
-  [academic.oup.com](https://academic.oup.com/rfs/article-abstract/33/5/2223/5758276)
+  https://academic.oup.com/rfs/article-abstract/33/5/2223/5758276
 - López de Prado, M. *The 10 Reasons Most Machine Learning Funds Fail*.
-  [papers.ssrn.com](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3104816)
+  https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3104816
 - Jansen, S. *Machine Learning for Trading* (GitHub).
-  [github.com/stefan-jansen](https://github.com/stefan-jansen/machine-learning-for-trading)
+  https://github.com/stefan-jansen/machine-learning-for-trading
 - QuantStart. *Forecasting Financial Time Series — Part 1*.
-  [quantstart.com](https://www.quantstart.com/articles/Forecasting-Financial-Time-Series-Part-1/)
-
-## Disclaimer
-
-This is a research and educational project, not investment advice. Nothing
-here is a recommendation to buy, sell, or hold any security. Past
-performance — simulated, backtested, or otherwise — does not indicate
-future results. The headline finding of this project is literally that its
-own long/short strategy doesn't reliably beat buy-and-hold; trade at your
-own risk and do your own research.
-
-## Contributing
-
-Issues and pull requests are welcome — extensions from the
-[Roadmap](#roadmap) are a good place to start.
-
-## License
-
-[MIT](LICENSE)
+  https://www.quantstart.com/articles/Forecasting-Financial-Time-Series-Part-1/
